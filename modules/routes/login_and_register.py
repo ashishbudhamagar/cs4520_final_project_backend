@@ -1,6 +1,6 @@
 from litestar import Controller, post, status_codes
 from litestar.exceptions import HTTPException
-from modules.data_types import Model_Login, Model_UserRegister
+from modules.data_types import Model_Login, Model_User
 import sqlite3
 
 
@@ -8,15 +8,23 @@ databaseName = 'CapRank.db'
 
 class Controller_LoginAndRegister(Controller):
 
+    path = '/'
+
     @post('/register')
-    async def register(self, data: Model_UserRegister) -> dict:
+    async def register(self, data: Model_User) -> dict:
 
         try:
+            if not data.username.strip() or not data.name.strip() or not data.password.strip():
+                
+
+
+
             command = """
                 INSERT INTO
                     User (username, name, password, profilePicture)
                     Values (?,?,?,?)
                 """
+            
 
             connection = sqlite3.connect(databaseName)
             connection.execute("PRAGMA foreign_keys = ON;")
@@ -34,7 +42,7 @@ class Controller_LoginAndRegister(Controller):
         except Exception as e:
             raise HTTPException(
                 status_code=status_codes.HTTP_400_BAD_REQUEST,
-                detail="Username already exists"
+                detail=f"ERROR: {e}"
             )
 
 
@@ -53,6 +61,8 @@ class Controller_LoginAndRegister(Controller):
 
             cursor.execute(command, (data.username, data.password))
             result = cursor.fetchall()
+            connection.close()
+
 
             if len(result) == 1:
                 return {
@@ -70,5 +80,5 @@ class Controller_LoginAndRegister(Controller):
 
             raise HTTPException(
                 status_code=status_codes.HTTP_400_BAD_REQUEST,
-                detail=f"Error: {e}"
+                detail=f"ERROR: {e}"
             )

@@ -1,13 +1,10 @@
-from litestar import Litestar, get, post, status_codes, Controller
-from litestar.exceptions import HTTPException
+from litestar import Litestar, get
 from litestar.config.cors import CORSConfig
-import sqlite3
-
-
 
 from modules.setup_database import setupDatabase
-from modules.routes.login_and_register import Controller_LoginAndRegister
 
+from modules.routes.login_and_register import Controller_LoginAndRegister
+from modules.routes.user import Controller_User
 
 
 
@@ -16,13 +13,4 @@ setupDatabase()
 
 
 
-@get('/')
-async def index() -> str:
-    return 'Hello asd'
-
-
-
-
-
-
-app = Litestar(cors_config=corsConfig, route_handlers=[index, login, register])
+app = Litestar(cors_config=corsConfig, route_handlers=[Controller_LoginAndRegister, Controller_User])
