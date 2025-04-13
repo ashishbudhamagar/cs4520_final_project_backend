@@ -13,12 +13,14 @@ class Controller_LoginAndRegister(Controller):
     @post('/register')
     async def register(self, data: Model_User) -> dict:
 
+
         try:
+
             if not data.username.strip() or not data.name.strip() or not data.password.strip():
-                
+                return {"asd":'asd'}
 
-
-
+            
+            
             command = """
                 INSERT INTO
                     User (username, name, password, profilePicture)
