@@ -2,41 +2,36 @@ from litestar import Controller, get, post, status_codes
 from litestar.exceptions import HTTPException
 import sqlite3
 
-from src.modules.data_types import DT_UserRegister, DT_UserLogin
-
-
+from modules.data_types import DT_UserRegister, DT_UserLogin
+from pydantic import BaseModel
 
 
 class Controller_LoginAndRegister(Controller):
+    
 
-
-
-    # @post('/register', status_code=status_codes.HTTP_201_CREATED)
-    @post('/register')
-    async def register(userData: DT_UserCreate) -> dict:
-
-        # validate it if pydantic doesnt
-
+    @post('/register', status_code=status_codes.HTTP_201_CREATED)
+    async def register(self, data: DT_UserRegister) -> dict:
         try:
 
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
+
             cursor.execute("""
                 SELECT *
                 FROM User
                 WHERE username = ?
-            """, (userData.username,))
-            
+            """, (data.username,))
+
             userQueried = cursor.fetchone()
 
-            if userQueried is None:
-                raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail="Username already choosen, choose a different one")
+            if userQueried != None:
+                raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail="Username already exists, choose a differnet one")
 
             cursor.execute("""
-                INSET INTO
+                INSERT INTO
                 User (username, name, password, profilePicture)
                     VALUES(?,?,?,?)
-            """, (userData.username, userData.name, userData.password, userData.profilePicture))
+            """, (data.username, data.name, data.password, data.profilePicture))
 
             connection.commit()
             connection.close()
@@ -47,18 +42,13 @@ class Controller_LoginAndRegister(Controller):
             }
         
         except Exception as e:
-            raise HTTPException(status_code=status_codes.HTTP_406_NOT_ACCEPTABLE, detail=f"ERROR: {e}")
+            raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail=f"ERROR: {e}")
 
 
-
-
-
-
-
-    @post('/login')
-    async def login(userData: DT_UserLogin) -> dict:
-
+    @post('/login', status_code=status_codes.HTTP_200_OK)
+    async def login(self, data: DT_UserLogin) -> dict:
         try:
+
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
 
@@ -66,13 +56,13 @@ class Controller_LoginAndRegister(Controller):
                 SELECT *
                 FROM User
                 WHERE username = ? and password = ?
-            """, (userData.username, userData.password))
+            """, (data.username, data.password))
 
             userQueried = cursor.fetchone()
             connection.close()
 
 
-            if userQueried is None:
+            if userQueried == None:
                 raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail="Username or password incorrect")
 
 
@@ -82,6 +72,7 @@ class Controller_LoginAndRegister(Controller):
                 'data': {
                     'username': userQueried[1],
                     'name': userQueried[2],
+                    'password': userQueried[3],
                     'profilePicture': userQueried[4],
                     'created_at': userQueried[5]
                 }
@@ -89,4 +80,4 @@ class Controller_LoginAndRegister(Controller):
         except Exception as e:
             raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail=f"ERROR: {e}")
 
-        
+    
