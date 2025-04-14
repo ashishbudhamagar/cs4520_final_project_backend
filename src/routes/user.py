@@ -8,7 +8,6 @@ from modules.data_types import DT_UserUpdate, DT_UserDelete
 class Controller_User(Controller):
     path = '/users'
 
-
     @get('/{userId:int}', status_code=status_codes.HTTP_200_OK)
     async def getUser(self, userId: int) -> dict:
         try:
@@ -25,18 +24,12 @@ class Controller_User(Controller):
             connection.close()
 
             if queriedUser == None:
-                print(5)
                 raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f"No user with id: {userId} exists")
 
             return {
                 'status': 'green',
                 'message': 'User exists and queried',
-                'data': {
-                    'username': queriedUser[0],
-                    'name': queriedUser[1],
-                    'profilePicture': queriedUser[2],
-                    'created_at': queriedUser[3],
-                }
+                'data': queriedUser
             }
         except Exception as e:
             raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f"ERROR: {e}")
@@ -71,8 +64,7 @@ class Controller_User(Controller):
 
     
     @patch('/', status_code=status_codes.HTTP_200_OK)
-    async def updateUser(self, data: DT_UserUpdate ) -> str:
-        print("HERE")
+    async def updateUser(self, data: DT_UserUpdate ) -> dict:
         try:
 
             connection = sqlite3.connect('CapRank.db')
@@ -81,7 +73,7 @@ class Controller_User(Controller):
                 SELECT *
                 FROM User
                 WHERE id = ? and password = ?
-            """, (data.userId, data.password))
+            """, (data.userId, data.currentPassword))
 
             queriedUser = cursor.fetchone()
 
@@ -105,23 +97,29 @@ class Controller_User(Controller):
                 updatValues.append(data.newProfilePicture)
                 updateFields.append("profilePicture = ?")
 
+
             updatValues.append(data.userId)
+
+
             commandUpdateUser = f"""
                 Update User
                 SET {', '.join(updateFields)}
                 WHERE id = ?
             """
+
+
             cursor.execute(commandUpdateUser, updatValues)
 
             cursor.execute("""
                 SELECT username, name, profilePicture, created_at
                 FROM User
                 WHERE id = ?
-            """, (data.userId))
+            """, (data.userId,))
             
             updatedUser = cursor.fetchone()
             connection.commit()
             connection.close()
+
 
             return {
                 'status': 'green',
@@ -130,7 +128,6 @@ class Controller_User(Controller):
             }
         
         except Exception as e:
-            print("Eeor:", e)
             raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f"ERROR: {e}")
         
 
@@ -139,7 +136,7 @@ class Controller_User(Controller):
     @delete('/', status_code=status_codes.HTTP_200_OK)
     async def deleteUser(self, data: DT_UserDelete) -> dict:
         try:
-
+            
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
 
@@ -155,15 +152,14 @@ class Controller_User(Controller):
                 raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail="Password is incorrect")
             
             cursor.execute("""
-                DELETE User
+                DELETE FROM User
                 WHERE id = ?
             """, (data.userId,))
 
-            deletedUser = cursor.fetchone()
-            print("delted", deletedUser)
 
             connection.commit()
             connection.close()
+
 
             return {
                 'status': 'green',
