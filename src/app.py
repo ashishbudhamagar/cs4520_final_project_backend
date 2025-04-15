@@ -13,12 +13,13 @@ from litestar.static_files.config import StaticFilesConfig
 from pathlib import Path
 
 setupDatabase()
+BASE_DIR = Path(__file__).parent
 
-
+# http://127.0.0.1:8000
 
 app = Litestar(
 
-    cors_config=CORSConfig(allow_origins=["http://127.0.0.1:5500"]),
+    cors_config = CORSConfig(allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"], allow_methods=["*"], allow_headers=["*"]),
     route_handlers= [
         Controller_LoginAndRegister,
         Controller_User,
@@ -27,7 +28,7 @@ app = Litestar(
     ],
     static_files_config=[
         StaticFilesConfig(
-            directories=[Path("user_post_images")],
+            directories=[BASE_DIR / "user_post_images"],
             path="/images"
         )
     ]

@@ -1,9 +1,10 @@
 from litestar import Controller, get, status_codes, post, patch, delete
 from litestar.exceptions import HTTPException
 
-from modules.data_types import DT_CaptionCreate
+from modules.data_types import DT_CaptionCreate, DT_CaptionDeleteAndUpdate
 
 import sqlite3
+from modules.functions import validateToken
 
 
 
@@ -12,7 +13,6 @@ import sqlite3
 class Controller_Caption(Controller):
 
     path = '/caption'
-
 
 
     @get("/{captionId:int}", status_code=status_codes.HTTP_200_OK)
@@ -114,8 +114,8 @@ class Controller_Caption(Controller):
             cursor.execute("""
                 SELECT *
                 FROM User
-                WHERE id = ? AND password = ?
-            """, (data.userId, data.password))
+                WHERE id = ? AND token = ?
+            """, (data.userId, data.token))
 
 
             queriedUser = cursor.fetchone()
@@ -148,8 +148,8 @@ class Controller_Caption(Controller):
             cursor.execute("""
                 SELECT *
                 FROM Caption
-                WHERE userId = ? and postId = ?
-            """, (data.userId, data.postId))
+                WHERE id = ?
+            """, (cursor.lastrowid,))
 
 
             newCaption = cursor.fetchone()
@@ -169,16 +169,13 @@ class Controller_Caption(Controller):
 
 
 
-    # /caption/captionId_userId_password
-    @delete('/{captionIdUserIdPassword:str}', status_code=status_codes.HTTP_200_OK)
-    async def deleteCaption(self, captionIdUserIdPassword: str) -> dict:
+    @delete('/', status_code=status_codes.HTTP_200_OK)
+    async def deleteCaption(self, data: DT_CaptionDeleteAndUpdate) -> dict:
         try:
 
+            if not validateToken(data.userId, data.token):
+                raise HTTPException(status_code=status_codes.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-            captionIdUserIdPassword = captionIdUserIdPassword.split("_")
-            captionId = captionIdUserIdPassword[0]
-            userId = captionIdUserIdPassword[1]
-            password = captionIdUserIdPassword[2]
 
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
@@ -188,8 +185,8 @@ class Controller_Caption(Controller):
             cursor.execute("""
                 SELECT * 
                 FROM User 
-                WHERE id = ? AND password = ? 
-            """, (userId, password))
+                WHERE id = ? AND token = ? 
+            """, (data.userId, data.token))
             
             queriedUser = cursor.fetchone()
 
@@ -201,7 +198,7 @@ class Controller_Caption(Controller):
                 SELECT * 
                 FROM Caption 
                 WHERE id = ? AND userId = ? 
-            """, (captionId, userId))
+            """, (data.captionId, data.userId))
             
             queriedCaption = cursor.fetchone()
 
@@ -212,9 +209,9 @@ class Controller_Caption(Controller):
                 SELECT postId 
                 FROM Caption 
                 WHERE id = ?
-            """, (captionId,))
+            """, (data.captionId,))
             
-            postId = cursor.fetchone()[0]
+            postId = cursor.fetchone()[1]
             
             cursor.execute("""
                 SELECT topCaptionId 
@@ -222,14 +219,14 @@ class Controller_Caption(Controller):
                 WHERE id = ?
             """, (postId,))
             
-            topCaptionId = cursor.fetchone()[0]
+            topCaptionId = cursor.fetchone()
 
             cursor.execute("""
                 DELETE FROM Caption 
                 WHERE id = ?
-            """, (captionId,))
+            """, (data.captionId,))
             
-            if str(topCaptionId) == captionId:
+            if str(topCaptionId) == data.captionId:
 
 
                 cursor.execute("""
@@ -270,105 +267,116 @@ class Controller_Caption(Controller):
 
 
 
-    # /caption/captionId_userId_password
-    @patch('/{captionIdUserIdPassword:str}', status_code=status_codes.HTTP_200_OK)
-    async def updateCaptionLikes(self, captionIdUserIdPassword: str) -> dict:
-
+    @patch('/', status_code=status_codes.HTTP_200_OK)
+    async def updateCaptionLikes(self, data: DT_CaptionDeleteAndUpdate) -> dict:
         try:
-            captionIdUserIdPassword = captionIdUserIdPassword.split('_')
+
+
+            if not validateToken(data.userId, data.token):
+                raise HTTPException(status_code=status_codes.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
             cursor.execute("PRAGMA foreign_keys = ON;")
 
-
-
             cursor.execute("""
-                SELECT *
+                SELECT id
                 FROM User
-                WHERE id = ? and password = ?
-            """, (captionIdUserIdPassword[1], captionIdUserIdPassword[2]))
+                WHERE id = ? AND token = ?
+            """, (data.userId, data.token))
 
             queriedUser = cursor.fetchone()
 
-            if queriedUser == None:
-                raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail="Unauthorized to delete caption")
-                
+            if queriedUser is None:
+                raise HTTPException( status_code=status_codes.HTTP_404_NOT_FOUND, detail="Unauthorized to toggle caption likes")
             
+
             cursor.execute("""
-                SELECT *
+                SELECT id, postId, likes
                 FROM Caption
                 WHERE id = ?
-            """, (captionIdUserIdPassword[0],))
+            """, (data.captionId,))
 
             queriedCaption = cursor.fetchone()
 
-            if queriedCaption == None:
-                raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail="no caption with that id")
-                
+            if queriedCaption is None:
+                raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail="No caption with that id")
+
+            captionId = queriedCaption[0]
+            postId = queriedCaption[1]
 
             cursor.execute("""
                 SELECT *
                 FROM UserLikedCaptions
-                WHERE userId = ? and captionId = ?
-            """, (captionIdUserIdPassword[1], captionIdUserIdPassword[0]))
+                WHERE userId = ? AND captionId = ?
+            """, (data.userId, captionId))
+            likedAlready = cursor.fetchone()
 
-
-
-            queriedLikedCaptions = cursor.fetchone()
-
-            if queriedLikedCaptions == None:
-                
+            if likedAlready is None:
                 cursor.execute("""
                     UPDATE Caption
                     SET likes = likes + 1
                     WHERE id = ?
-                """, (captionIdUserIdPassword[0],))
+                """, (captionId,))
 
                 cursor.execute("""
-                    INSERT INTO
-                    UserLikedCaptions (userId, captionId)
-                        Values(?,?)
-                """, (captionIdUserIdPassword[1], captionIdUserIdPassword[0]))
-
+                    INSERT INTO UserLikedCaptions (userId, captionId)
+                    VALUES (?, ?)
+                """, (data.userId, captionId))
 
             else:
                 cursor.execute("""
                     UPDATE Caption
                     SET likes = likes - 1
                     WHERE id = ?
-                """, (captionIdUserIdPassword[0],))
+                """, (captionId,))
 
                 cursor.execute("""
                     DELETE FROM UserLikedCaptions
-                    WHERE userId = ? and postId = ?
-                """, (captionIdUserIdPassword[1], captionIdUserIdPassword[0]))
+                    WHERE userId = ? AND captionId = ?
+                """, (data.userId, captionId))
 
 
-            cursor.execute("SELECT *  FROM Caption where postId = ?", (queriedCaption[1],))
-            queriedPost = cursor.fetchone()
+            cursor.execute(
+                """
+                SELECT id
+                FROM Caption
+                WHERE postId = ?
+                ORDER BY likes DESC, created_at ASC
+                LIMIT 1
+                """,
+                (postId,)
+            )
+            newTop = cursor.fetchone()
 
 
-            cursor.execute("SELECT id FROM Caption WHERE postId + ? Order by likes DESC LIMIT 1", (queriedCaption[1]))
 
-            highestLikedCaptionId = cursor.fetchone()
-
-            if highestLikedCaptionId == captionIdUserIdPassword[0] and queriedPost[5] != highestLikedCaptionId:
-                cursor.execute("Update Post SET topCaptionId = ? Where id = ?", (queriedCaption[0], queriedCaption[1]))
-
+            if newTop is not None:
+                newTopCaptionId = newTop[0]
+                cursor.execute("""
+                    UPDATE Post
+                    SET topCaptionId = ?
+                    WHERE id = ?
+                """, (newTopCaptionId, postId))
+            else:
+                cursor.execute("""
+                    UPDATE Post
+                    SET topCaptionId = NULL
+                    WHERE id = ?
+                """, (postId,))
 
             connection.commit()
             connection.close()
 
 
+
             return {
                 'status': 'green',
-                'message': 'Caption updated successfully'
+                'message': 'Caption like/unlike successfully'
             }
-        
 
         except Exception as e:
-            raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f"ERROR: {e}")
-
-
-
+            raise HTTPException(
+                status_code=status_codes.HTTP_404_NOT_FOUND, 
+                detail=f"ERROR: {e}"
+            )

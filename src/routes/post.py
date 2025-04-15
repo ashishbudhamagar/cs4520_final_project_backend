@@ -6,9 +6,11 @@ import sqlite3
 import uuid
 import os
 
-from modules.data_types import DT_PostCreate
+from modules.data_types import DT_PostCreate, DT_PostDeleteAndUpdate
 
-postImageFolder = '../src/user_post_images'
+from modules.functions import validateToken
+
+postImageFolder = "user_post_images"
 
 
 class Controller_Post(Controller):
@@ -70,9 +72,13 @@ class Controller_Post(Controller):
 
 
 
-    @post('/', status_codes=status_codes.HTTP_201_CREATED)
+    @post('/', status_code=status_codes.HTTP_201_CREATED)
     async def createPost(self, data: DT_PostCreate = Body(media_type="multipart/form-data")) -> dict:
         try:
+
+            if not validateToken(data.userId, data.token):
+                raise HTTPException(status_code=status_codes.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
 
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
@@ -81,8 +87,8 @@ class Controller_Post(Controller):
             cursor.execute("""
                 SELECT *
                 FROM User
-                WHERE id = ? and password = ?
-            """, (data.userId, data.password))
+                WHERE id = ? and token = ?
+            """, (data.userId, data.token))
 
             queriedPost = cursor.fetchone()
 
@@ -148,40 +154,41 @@ class Controller_Post(Controller):
             raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f'ERROR: {e}')
 
 
-    # /post/postId_userId_password
-    @delete('/{postIdUserIdPassword:str}', status_code=status_codes.HTTP_200_OK)
-    async def deletePost(self, postIdUserIdPassword: str) -> dict:
+    @delete('/', status_code=status_codes.HTTP_200_OK)
+    async def deletePost(self, data: DT_PostDeleteAndUpdate ) -> dict:
 
         try:
 
-            postIdUserIdPassword = postIdUserIdPassword.split("_")
+            if not validateToken(data.userId, data.token):
+                raise HTTPException(status_code=status_codes.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+            
 
 
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
 
-            cursor.execute("SELECT * FROM User WHERE id = ? and password = ? ", (postIdUserIdPassword[1], postIdUserIdPassword[2]))
+            cursor.execute("SELECT * FROM User WHERE id = ? and token = ? ", (data.userId, data.token))
             queriedUser = cursor.fetchone()
 
             if queriedUser == None:
                 raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f"Unathorized to delete")
             
             
-            cursor.execute("SELECT * FROM Post WHERE id = ? and userId = ? ", (postIdUserIdPassword[0], postIdUserIdPassword[1]))
+            cursor.execute("SELECT * FROM Post WHERE id = ? and userId = ? ", (data.postId, data.userId))
             queriedPost = cursor.fetchone() 
 
             if queriedPost == None:
                 raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f"Unathorized to delete someone else post")
             
 
-            cursor.execute("DELETE FROM Post WHERE id = ?", (postIdUserIdPassword[0],))
+            cursor.execute("DELETE FROM Post WHERE id = ?", (data.postId))
             connection.commit()
             connection.close()
             
 
             return {
                 'status': 'green',
-                'message': 'Post deleted',
+                'message': 'Post deleted'
             }
         
         except Exception as e:
@@ -190,54 +197,54 @@ class Controller_Post(Controller):
 
 
 
-    # /post/postId_userId_password
-    @patch('/{postIdUserIdPassword: str}', status_code=status_codes.HTTP_200_OK)
-    async def updatePost(self, postIdUserIdPassword: str) -> dict:
+    @patch('/', status_code=status_codes.HTTP_200_OK)
+    async def updatePost(self, data: DT_PostDeleteAndUpdate) -> dict:
 
         try:
 
-            postIdUserIdPassword = postIdUserIdPassword.split("_")
+            if not validateToken(data.userId, data.token):
+                raise HTTPException(status_code=status_codes.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
 
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
 
-            cursor.execute("SELECT * FROM User WHERE id = ? and password = ? ", (postIdUserIdPassword[1], postIdUserIdPassword[2]))
+            cursor.execute("SELECT * FROM User WHERE id = ? and token = ? ",(data.userId, data.token))
             queriedUser = cursor.fetchone()
 
             if queriedUser == None:
                 raise HTTPException(status_code=status_codes.HTTP_404_NOT_FOUND, detail=f"Unathorized to delete")
             
 
-            cursor.execute('SELECT * FROM UserLikedPosts where userId = ? and postId = ?', (postIdUserIdPassword[1], postIdUserIdPassword[0]))
+            cursor.execute('SELECT * FROM UserLikedPosts where userId = ? and postId = ?', (data.userId, data.postId))
             queriedUserLiked = cursor.fetchone()
 
 
             if queriedUserLiked == None:
                 
-                print("BERE")
                 cursor.execute("""
                     UPDATE Post
                     SET likes = likes + 1
                     WHERE id = ?
-                """, (postIdUserIdPassword[0],))
+                """, (data.postId,))
 
                 cursor.execute("""
                     INSERT INTO
                     UserLikedPosts (userId, postId)
                         Values(?,?)
-                """, (postIdUserIdPassword[1], postIdUserIdPassword[0]))
+                """, (data.userId, data.postId))
 
             else:
                 cursor.execute("""
                     UPDATE Post
                     SET likes = likes - 1
                     WHERE id = ?
-                """, (postIdUserIdPassword[0],))
+                """, (data.postId,))
 
                 cursor.execute("""
                     DELETE FROM UserLikedPosts
                     WHERE userId = ? and postId = ?
-                """, (postIdUserIdPassword[1], postIdUserIdPassword[0]))
+                """, (data.userId, data.postId))
 
 
             connection.commit()

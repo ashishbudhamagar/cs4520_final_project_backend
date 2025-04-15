@@ -17,8 +17,8 @@ def setupDatabase():
                 password TEXT NOT NULL,
                 profilePicture TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                likedPosts
-                likedCaptions
+                token TEXT UNIQUE
+
             );
 
         CREATE TABLE IF NOT EXISTS 
@@ -48,21 +48,21 @@ def setupDatabase():
             );
 
 
-            CREATE TABLE IF NOT EXISTS UserLikedPosts (
-                userId INTEGER,
-                postId INTEGER,
-                PRIMARY KEY (userId, postId),
-                FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
-                FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE
-            );
+        CREATE TABLE IF NOT EXISTS UserLikedPosts (
+            userId INTEGER,
+            postId INTEGER,
+            PRIMARY KEY (userId, postId),
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE
+        );
 
-            CREATE TABLE IF NOT EXISTS UserLikedCaptions (
-                userId INTEGER,
-                captionId INTEGER,
-                PRIMARY KEY (userId, captionId),
-                FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
-                FOREIGN KEY (captionId) REFERENCES Caption(id) ON DELETE CASCADE
-            );
+        CREATE TABLE IF NOT EXISTS UserLikedCaptions (
+            userId INTEGER,
+            captionId INTEGER,
+            PRIMARY KEY (userId, captionId),
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (captionId) REFERENCES Caption(id) ON DELETE CASCADE
+        );
     """
 
 

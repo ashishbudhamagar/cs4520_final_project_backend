@@ -1,20 +1,35 @@
 from litestar import Controller, post, status_codes
 from litestar.exceptions import HTTPException
+from litestar.params import Body
+
 import sqlite3
+import uuid
+import os
+
+from pathlib import Path
+
 
 from modules.data_types import DT_UserRegister, DT_UserLogin
+
+
+
+BASE_DIR = Path(__file__).parent.parent  
+DEFAULT_PROFILE_PIC = BASE_DIR / "profile_images" / "deault_profile_image.jpg"
+
+CUSTOM_PROFILE_FOLDER = BASE_DIR / "profile_images"
+
 
 
 class Controller_LoginAndRegister(Controller):
     
 
     @post('/register', status_code=status_codes.HTTP_201_CREATED)
-    async def register(self, data: DT_UserRegister) -> dict:
+    async def register(self, data: DT_UserRegister = Body(media_type="multipart/form-data")) -> dict:
         try:
 
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
-
+            cursor.execute("PRAGMA foreign_keys = ON;")
 
             cursor.execute("""
                 SELECT *
@@ -27,12 +42,28 @@ class Controller_LoginAndRegister(Controller):
 
             if userQueried != None:
                 raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail="Username already exists, choose a differnet one")
+            
+            profile_pic_path = ""
+
+            if data.profilePicture:
+
+                file_extension = os.path.splitext(data.profilePicture.filename)[1]
+                file_name = f"{data.username}_{uuid.uuid4().hex}{file_extension}"
+                profile_pic_path = os.path.join("profile_images", file_name)
+                
+                full_save_path = os.path.join(BASE_DIR, "profile_images", file_name)
+
+                with open(full_save_path, "wb") as f:
+                    f.write(await data.profilePicture.read())
+            else:
+                profile_pic_path = "profile_images/default_profile_image.jpg"
+    
 
             cursor.execute("""
                 INSERT INTO
                 User (username, name, password, profilePicture)
                     VALUES(?,?,?,?)
-            """, (data.username, data.name, data.password, data.profilePicture))
+            """, (data.username, data.name, data.password, profile_pic_path))
 
             connection.commit()
             connection.close()
@@ -43,6 +74,7 @@ class Controller_LoginAndRegister(Controller):
             }
         
         except Exception as e:
+            print(e)
             raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail=f"ERROR: {e}")
 
 
@@ -50,8 +82,10 @@ class Controller_LoginAndRegister(Controller):
     async def login(self, data: DT_UserLogin) -> dict:
         try:
 
+
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
+            cursor.execute("PRAGMA foreign_keys = ON;")
 
             cursor.execute("""
                 SELECT *
@@ -60,25 +94,32 @@ class Controller_LoginAndRegister(Controller):
             """, (data.username, data.password))
 
             userQueried = cursor.fetchone()
-            connection.close()
 
 
             if userQueried == None:
                 raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail="Username or password incorrect")
 
+            authToken = str(uuid.uuid4())
+
+            cursor.execute("UPDATE User SET token = ? WHERE id = ?", (authToken, userQueried[0]))
+            connection.commit()
+            connection.close()
 
             return {
                 'status': 'green',
-                'message': 'User successfully created',
-                'data': {
-                    'username': userQueried[1],
-                    'name': userQueried[2],
-                    'password': userQueried[3],
-                    'profilePicture': userQueried[4],
-                    'created_at': userQueried[5]
-                }
+                'message': 'User successfully loggedin',
+                "data": {
+                        "userId": userQueried[0],
+                        "username": userQueried[1],
+                        "name": userQueried[2],
+                        "profilePicture": userQueried[4],
+                        "token": authToken
+                    }
             }
+        
+
         except Exception as e:
+            print(e)
             raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail=f"ERROR: {e}")
 
     
