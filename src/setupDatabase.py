@@ -5,6 +5,7 @@ def setupDatabase():
     databaseName = 'CapRank.db'
     connection = sqlite3.connect(databaseName)
     cursor = connection.cursor()
+    cursor.execute("PRAGMA foreign_keys = ON;")
 
     schemaCommand = """
 
@@ -15,15 +16,16 @@ def setupDatabase():
                 name TEXT NOT NULL,
                 password TEXT NOT NULL,
                 profilePicture TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                likedPosts
+                likedCaptions
             );
 
         CREATE TABLE IF NOT EXISTS 
             Post (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 userId INTEGER NOT NULL,
-                image TEXT NOT NULL,
-                caption TEXT,
+                imageName TEXT NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 likes INTEGER DEFAULT 0,
                 topCaptionId INTEGER,
@@ -43,6 +45,23 @@ def setupDatabase():
 
                 FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE,
                 FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE
+            );
+
+
+            CREATE TABLE IF NOT EXISTS UserLikedPosts (
+                userId INTEGER,
+                postId INTEGER,
+                PRIMARY KEY (userId, postId),
+                FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+                FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS UserLikedCaptions (
+                userId INTEGER,
+                captionId INTEGER,
+                PRIMARY KEY (userId, captionId),
+                FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+                FOREIGN KEY (captionId) REFERENCES Caption(id) ON DELETE CASCADE
             );
     """
 

@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from litestar.datastructures import UploadFile
+
 from typing import Optional, Annotated
 
 
@@ -28,3 +30,26 @@ class DT_UserUpdate(BaseModel):
 class DT_UserDelete(BaseModel):
     userId: Annotated[int, Field(ge=1)]
     password: Annotated[str, Field(min_length=1)]
+
+
+
+class DT_PostGet(BaseModel):
+    postId: Annotated[int, Field(ge=1)]
+
+
+
+# class DT_CaptionCreate(BaseModel):
+#     postId: Annotated[int, Field(ge=1)]
+#     userId: Annotated[int, Field(ge=1)]
+#     text: str
+#     likes: Annotated[int, Field(ge=0)]
+
+
+class DT_PostCreate(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    userId: Annotated[int, Field(ge=1)]
+    password: Annotated[str, Field(min_length=1)]
+    image: UploadFile
+    userCaptionText: Optional[Annotated[str, Field(min_length=1)]] = None
+
