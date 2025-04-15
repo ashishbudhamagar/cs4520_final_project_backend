@@ -24,7 +24,7 @@ class Controller_LoginAndRegister(Controller):
     
 
     @post('/register', status_code=status_codes.HTTP_201_CREATED)
-    async def register(self, data: DT_UserRegister = Body(media_type="multipart/form-data")) -> dict:
+    async def register(self, data: DT_UserRegister) -> dict:
         try:
 
             connection = sqlite3.connect('CapRank.db')
@@ -43,20 +43,9 @@ class Controller_LoginAndRegister(Controller):
             if userQueried != None:
                 raise HTTPException(status_code=status_codes.HTTP_400_BAD_REQUEST, detail="Username already exists, choose a differnet one")
             
-            profile_pic_path = ""
 
-            if data.profilePicture:
 
-                file_extension = os.path.splitext(data.profilePicture.filename)[1]
-                file_name = f"{data.username}_{uuid.uuid4().hex}{file_extension}"
-                profile_pic_path = os.path.join("profile_images", file_name)
-                
-                full_save_path = os.path.join(BASE_DIR, "profile_images", file_name)
-
-                with open(full_save_path, "wb") as f:
-                    f.write(await data.profilePicture.read())
-            else:
-                profile_pic_path = "profile_images/default_profile_image.jpg"
+            profile_pic_path = "profile_images/default_profile_image.jpg"
     
 
             cursor.execute("""

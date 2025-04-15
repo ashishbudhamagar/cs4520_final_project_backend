@@ -5,12 +5,10 @@ from typing import Optional, Annotated
 
 
 class DT_UserRegister(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     username: Annotated[str, Field(min_length=3, max_length=30)]
     name: Annotated[str, Field(min_length=1, max_length=30)]
     password: Annotated[str, Field(min_length=3, max_length=30)]
-    profilePicture: Optional[UploadFile] = None
 
 
 class DT_UserLogin(BaseModel):
