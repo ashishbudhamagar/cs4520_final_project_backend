@@ -6,6 +6,7 @@ from setupDatabase import setupDatabase
 from routes.login_and_register import Controller_LoginAndRegister
 from routes.user import Controller_User
 from routes.post import Controller_Post
+from routes.caption import Controller_Caption
 
 
 from litestar.static_files.config import StaticFilesConfig
@@ -22,6 +23,7 @@ app = Litestar(
         Controller_LoginAndRegister,
         Controller_User,
         Controller_Post,
+        Controller_Caption
     ],
     static_files_config=[
         StaticFilesConfig(

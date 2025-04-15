@@ -1,9 +1,8 @@
-from litestar import Controller, get, post, status_codes
+from litestar import Controller, post, status_codes
 from litestar.exceptions import HTTPException
 import sqlite3
 
 from modules.data_types import DT_UserRegister, DT_UserLogin
-from pydantic import BaseModel
 
 
 class Controller_LoginAndRegister(Controller):
@@ -16,11 +15,13 @@ class Controller_LoginAndRegister(Controller):
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
 
+
             cursor.execute("""
                 SELECT *
                 FROM User
                 WHERE username = ?
             """, (data.username,))
+
 
             userQueried = cursor.fetchone()
 

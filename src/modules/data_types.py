@@ -37,14 +37,6 @@ class DT_PostGet(BaseModel):
     postId: Annotated[int, Field(ge=1)]
 
 
-
-# class DT_CaptionCreate(BaseModel):
-#     postId: Annotated[int, Field(ge=1)]
-#     userId: Annotated[int, Field(ge=1)]
-#     text: str
-#     likes: Annotated[int, Field(ge=0)]
-
-
 class DT_PostCreate(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -53,3 +45,9 @@ class DT_PostCreate(BaseModel):
     image: UploadFile
     userCaptionText: Optional[Annotated[str, Field(min_length=1)]] = None
 
+
+class DT_CaptionCreate(BaseModel):
+    postId: int
+    userId: int
+    password: str
+    text: str

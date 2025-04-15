@@ -15,7 +15,7 @@ class Controller_User(Controller):
             connection = sqlite3.connect('CapRank.db')
             cursor = connection.cursor()
             cursor.execute("""
-                SELECT username, name, profilePicture, created_at
+                SELECT id, username, name, profilePicture, created_at
                 FROM User
                 WHERE id = ?
             """, (userId,))
@@ -44,7 +44,7 @@ class Controller_User(Controller):
             cursor = connection.cursor()
 
             cursor.execute("""
-                SELECT username, name, profilePicture, created_at
+                SELECT id, username, name, profilePicture, created_at
                 FROM User
             """)
 

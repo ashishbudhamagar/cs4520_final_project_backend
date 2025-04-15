@@ -6,7 +6,7 @@ import sqlite3
 import uuid
 import os
 
-from modules.data_types import DT_PostGet, DT_PostCreate
+from modules.data_types import DT_PostCreate
 
 postImageFolder = '../src/user_post_images'
 
