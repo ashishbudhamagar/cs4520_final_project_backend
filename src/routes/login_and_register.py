@@ -50,9 +50,9 @@ class Controller_LoginAndRegister(Controller):
 
             cursor.execute("""
                 INSERT INTO
-                User (username, name, password, profilePicture)
-                    VALUES(?,?,?,?)
-            """, (data.username, data.name, data.password, profile_pic_path))
+                User (username, name, password)
+                    VALUES(?,?,?)
+            """, (data.username, data.name, data.password ))
 
             connection.commit()
             connection.close()
